@@ -3,7 +3,7 @@
 MULTIMIDIA(2024.1) - Tarefa 2
 
 >Conexão de diretorio:
->cd radioweb.
+>cd musicasweb.
 >
 >Compilação:
 >npm run dev.
