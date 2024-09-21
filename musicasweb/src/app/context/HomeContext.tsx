@@ -11,6 +11,7 @@ type HomeContextData = {
   nextTrack: () => void;
   prevTrack: () => void;
   seek: (time: number) => void;
+  setVolume: (value: number) => void; // Nova função para ajuste de volume
 };
 
 export const HomeContext = createContext({} as HomeContextData);
@@ -24,10 +25,12 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [currentMusic, setCurrentMusic] = useState<string | null>(null);
   const [progress, setProgress] = useState(0); // Progress in seconds
+  const [volume, setVolume] = useState(1); // Valor de volume (1 = 100%)
 
   useEffect(() => {
     if (currentMusic) {
       const newAudio = new Audio(currentMusic);
+      newAudio.volume = volume; // Ajusta o volume inicial
       setAudio(newAudio);
       newAudio.play();
       setPlaying(true);
@@ -43,10 +46,9 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
 
       return () => {
         newAudio.pause();
-        newAudio.src = ''; // Clear source to stop buffering
       };
     }
-  }, [currentMusic]);
+  }, [currentMusic, volume]); // volume agora é monitorado também
 
   const configPlayPause = () => {
     if (playing) {
@@ -83,6 +85,13 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
     }
   };
 
+  const setVolumeHandler = (value: number) => {
+    if (audio) {
+      audio.volume = value;
+    }
+    setVolume(value); // Ajusta o estado do volume
+  };
+
   const tracks = [
     '/audios/amor-e-fe.mp3',
     '/audios/leaozinho.mp3',
@@ -115,7 +124,8 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
         playMusic,
         nextTrack,
         prevTrack,
-        seek
+        seek,
+        setVolume: setVolumeHandler // Adicionando a função de ajuste de volume ao contexto
       }}
     >
       {children}
