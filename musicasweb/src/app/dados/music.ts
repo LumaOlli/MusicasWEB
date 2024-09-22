@@ -22,6 +22,6 @@ export const musics = [
       title: "Pais e Filhos",
       description: "A música 'Pais e Filhos', da banda brasileira Legião Urbana, é uma das mais emblemáticas do rock nacional e aborda com profundidade as relações familiares, a incompreensão entre gerações e a efemeridade da vida.",
       image: "/image/paiefilho.jpg",
-      url: "/audios/Pais-e-Filhos.mp3", // Caminho para o arquivo de áudio
+      url: "/audios/Pais-e-filhos.mp3", // Caminho para o arquivo de áudio
     }
 ];  
