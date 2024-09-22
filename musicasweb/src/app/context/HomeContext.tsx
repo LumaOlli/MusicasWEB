@@ -95,7 +95,7 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
   const tracks = [
     '/audios/amor-e-fe.mp3',
     '/audios/leaozinho.mp3',
-    '/audios/Pais-e-Filhos.mp3'
+    '/audios/Pais-e-filhos.mp3'
   ];
 
   const nextTrack = () => {
