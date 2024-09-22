@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaVolumeMute, FaVolumeDown, FaVolumeUp } from 'react-icons/fa';
 import { HomeContext } from './context/HomeContext';
 import { musics } from './dados/music';
@@ -10,24 +10,55 @@ export default function Home() {
   const [currentMusicData, setCurrentMusicData] = useState<{ title: string; image: string; author: string; description: string } | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [volume, setLocalVolume] = useState(1); // Controle de volume local
+  const audioRef = useRef<HTMLAudioElement | null>(null); // Ref para o áudio
 
   useEffect(() => {
-    if (currentMusic) {
+    // Inicializa a instância de áudio, se necessário
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+    }
+
+    if (currentMusic && audioRef.current.src !== currentMusic) {
+      // Pausa a música atual antes de carregar a nova, se houver uma música carregada
+      if (audioRef.current && audioRef.current.src) {
+        audioRef.current.pause();
+      }
+
       const musicData = musics.find(music => music.url === currentMusic);
       setCurrentMusicData(musicData || null);
 
-      const audio = new Audio(currentMusic);
-      audio.onloadedmetadata = () => {
-        setAudioDuration(audio.duration);
+      // Define a nova fonte de áudio e carrega-a
+      audioRef.current.src = currentMusic;
+      audioRef.current.load();
+      audioRef.current.play();
+
+      // Define a duração do áudio ao carregar os metadados
+      audioRef.current.onloadedmetadata = () => {
+        setAudioDuration(audioRef.current?.duration || 0);
+      };
+
+      // Garante que não haja sobreposição ao terminar
+      audioRef.current.onended = () => {
+        audioRef.current.pause();
       };
     }
+
+    return () => {
+      // Pausa o áudio ao desmontar o componente, se o áudio estiver tocando
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
   }, [currentMusic]);
 
-  // Atualiza o volume no contexto e localmente
+  // Função para alterar o volume sem reiniciar a música
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setLocalVolume(newVolume);
-    setVolume(newVolume); // Atualiza o volume no contexto de áudio
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume; // Ajusta o volume da instância atual do áudio
+    }
+    setVolume(newVolume); // Atualiza o volume no contexto de áudio, se necessário
   };
 
   // Escolhe o ícone de volume com base no nível atual
