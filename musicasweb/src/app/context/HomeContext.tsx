@@ -48,7 +48,7 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
         newAudio.pause();
       };
     }
-  }, [currentMusic, volume]); // volume agora é monitorado também
+  }, [currentMusic]); // volume agora é monitorado também
 
   const configPlayPause = () => {
     if (playing) {
