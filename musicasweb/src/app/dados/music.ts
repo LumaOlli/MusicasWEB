@@ -70,7 +70,7 @@ export const musics = [
       category: "Jazz",
       description: "A canção 'Fly Me To The Moon', imortalizada na voz de Frank Sinatra, é um clássico que transcende gerações com sua melodia suave e letra romântica.",
       image: "/image/FlyMeToTheMoom.jpg",  // Caminho para o arquivo de imagem
-      url: "/audios/FlyMeToTheMoom.mp3", // Caminho para o arquivo de áudio
+      url: "/audios/FlyMeToTheMoon.mp3", // Caminho para o arquivo de áudio
     },
     {
       id: 9,
