@@ -10,24 +10,60 @@ export default function Home() {
   const [currentMusicData, setCurrentMusicData] = useState<{ title: string; image: string; author: string; description: string } | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
   const [volume, setLocalVolume] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selecionada
+  const [balance, setBalance] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null);
 
   useEffect(() => {
     if (currentMusic) {
       const musicData = musics.find(music => music.url === currentMusic);
       setCurrentMusicData(musicData || null);
 
-      const audio = new Audio(currentMusic);
-      audio.onloadedmetadata = () => {
-        setAudioDuration(audio.duration);
+      const newAudio = new Audio(currentMusic);
+      const newAudioContext = new AudioContext();
+      const newPannerNode = newAudioContext.createStereoPanner();
+
+      const source = newAudioContext.createMediaElementSource(newAudio);
+      source.connect(newPannerNode).connect(newAudioContext.destination);
+
+      setAudio(newAudio);
+      setAudioContext(newAudioContext);
+      setPannerNode(newPannerNode);
+
+      newAudio.onloadedmetadata = () => {
+        setAudioDuration(newAudio.duration);
+      };
+
+      return () => {
+        newAudio.pause();
+        newAudioContext.close();
       };
     }
   }, [currentMusic]);
+
+  useEffect(() => {
+    if (pannerNode) {
+      pannerNode.pan.value = balance;
+    }
+  }, [balance, pannerNode]);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setLocalVolume(newVolume);
     setVolume(newVolume);
+    if (audio) {
+      audio.volume = newVolume;
+    }
+  };
+
+  const adjustBalance = (direction: 'left' | 'right') => {
+    setBalance(prev => {
+      const newBalance = direction === 'left' ? Math.max(-1, prev - 0.1) : Math.min(1, prev + 0.1);
+      return newBalance;
+    });
   };
 
   const renderVolumeIcon = () => {
@@ -36,54 +72,68 @@ export default function Home() {
     return <FaVolumeUp className="text-[30px]" />;
   };
 
-  // Categorias extraídas das músicas
+  const handleLeftPan = () => {
+    adjustBalance('left');
+  };
+
+  const handleRightPan = () => {
+    adjustBalance('right');
+  };
+
   const categories = Array.from(new Set(musics.map(music => music.category)));
 
   return (
     <main className="flex min-h-screen flex-row p-24">
-      {/* Menu lateral - categorias de músicas */}
-      <aside className="w-1/4 p-4 border-r border-gray-200 flex flex-col items-center">
+      <header className="absolute top-0 left-0 w-full p-6 bg-purple-600 text-white text-center text-4xl font-bold">
+        Euphonic
+      </header>
+
+      <aside className="w-1/6 p-4 border-r border-gray-200 flex flex-col items-center mt-16">
         <hr className="border-gray-300 w-full mb-4" />
         <h2 className="text-lg font-bold mb-4 text-center">Categorias</h2>
         <hr className="border-gray-300 w-full mb-4" />
         <ul className="w-full">
-          {categories.map((category) => (
+          {categories.map((category, index) => (
             <li
-              key={category}
+              key={`category-${index}`} 
               className={`mb-4 pb-2 cursor-pointer text-center ${selectedCategory === category ? 'font-bold text-blue-500' : ''}`}
               onClick={() => setSelectedCategory(category)}
             >
               {category}
+              <div className="h-px bg-gray-300 w-full my-2"></div> 
             </li>
           ))}
         </ul>
       </aside>
 
-      {/* Lista de músicas no lado direito */}
-      <aside className="w-1/4 p-4 border-l border-gray-200 flex flex-col items-center">
+      <aside className="w-1/4 p-4 border-l border-gray-200 flex flex-col items-center mt-16">
         <hr className="border-gray-300 w-full mb-4" />
         <h2 className="text-lg font-bold mb-4 text-center">Músicas</h2>
         <hr className="border-gray-300 w-full mb-4" />
         <ul className="w-full">
-          {musics
-            .filter(music => selectedCategory === null || music.category === selectedCategory)
-            .map((music) => (
-              <li
-                key={music.id}
-                className="mb-6 border-b border-gray-300 pb-4 cursor-pointer flex flex-col items-center"
-                onClick={() => playMusic(music.url)}
-              >
-                <img src={music.image} alt={music.title} className="w-40 h-40 object-cover mb-2" />
-                <h3 className="text-xl font-semibold mb-1">{music.title}</h3>
-                <p className="text-sm text-gray-500 mb-1">Artist: {music.author}</p>
-                <p className="text-center">{music.description}</p>
-              </li>
-            ))}
+          {selectedCategory === null ? (
+            <p className="text-center">Selecione uma categoria para ver as músicas</p>
+          ) : (
+            musics
+              .filter(music => music.category === selectedCategory)
+              .map((music, index) => (
+                <li
+                  key={`music-${music.id}`}
+                  className="mb-6 pb-4 cursor-pointer flex flex-col items-center"
+                  onClick={() => playMusic(music.url)}
+                >
+                  <h3 className="text-xl font-semibold mb-1">{music.title}</h3>
+                  <p className="text-sm text-gray-500 mb-1">Artista: {music.author}</p>
+                  {index < musics.filter(m => m.category === selectedCategory).length - 1 && (
+                    <hr className="border-gray-300 w-full mb-4" /> 
+                  )}
+                </li>
+              ))
+          )}
         </ul>
       </aside>
 
-      {/* Conteúdo principal */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center mt-16">
         <div className="flex flex-col items-center mb-6">
           <div className="flex flex-col items-center">
             <h1 className="text-2xl font-bold mb-2 text-center">
@@ -124,6 +174,22 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Botões de pan abaixo da faixa roxa */}
+        <div className="flex justify-center items-center mb-4">
+          <button 
+            onClick={handleLeftPan} 
+            className="mr-2 p-2 border border-white bg-transparent rounded hover:bg-white hover:text-black transition"
+          >
+            Esquerda
+          </button>
+          <button 
+            onClick={handleRightPan} 
+            className="ml-2 p-2 border border-white bg-transparent rounded hover:bg-white hover:text-black transition"
+          >
+            Direita
+          </button>
         </div>
 
         <div className="flex items-center mt-4">

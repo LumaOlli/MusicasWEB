@@ -11,7 +11,8 @@ type HomeContextData = {
   nextTrack: () => void;
   prevTrack: () => void;
   seek: (time: number) => void;
-  setVolume: (value: number) => void; // Nova função para ajuste de volume
+  setVolume: (value: number) => void; // Função para ajuste de volume
+  setBalance: (value: number) => void; // Função para ajuste de balanceamento estéreo
 };
 
 export const HomeContext = createContext({} as HomeContextData);
@@ -24,13 +25,26 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
   const [playing, setPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [currentMusic, setCurrentMusic] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0); // Progress in seconds
-  const [volume, setVolume] = useState(1); // Valor de volume (1 = 100%)
+  const [progress, setProgress] = useState(0); // Progresso em segundos
+  const [volume, setVolume] = useState(1); // Volume (1 = 100%)
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
+  const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null);
+  const [balance, setBalance] = useState(0); // Balanceamento estéreo (-1 = esquerda, 1 = direita)
 
   useEffect(() => {
     if (currentMusic) {
       const newAudio = new Audio(currentMusic);
       newAudio.volume = volume; // Ajusta o volume inicial
+      const newAudioContext = new AudioContext();
+      const newPannerNode = newAudioContext.createStereoPanner();
+
+      // Conectar o áudio ao panner
+      const source = newAudioContext.createMediaElementSource(newAudio);
+      source.connect(newPannerNode).connect(newAudioContext.destination);
+
+      // Armazenar o contexto e o panner
+      setAudioContext(newAudioContext);
+      setPannerNode(newPannerNode);
       setAudio(newAudio);
       newAudio.play();
       setPlaying(true);
@@ -46,9 +60,16 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
 
       return () => {
         newAudio.pause();
+        newAudioContext.close(); // Fechar o contexto de áudio
       };
     }
-  }, [currentMusic]); // volume agora é monitorado também
+  }, [currentMusic]);
+
+  useEffect(() => {
+    if (pannerNode) {
+      pannerNode.pan.value = balance; // Atualiza o balanceamento estéreo
+    }
+  }, [balance, pannerNode]);
 
   const configPlayPause = () => {
     if (playing) {
@@ -87,15 +108,44 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
 
   const setVolumeHandler = (value: number) => {
     if (audio) {
-      audio.volume = value;
+      audio.volume = value; // Ajusta o volume do áudio
     }
     setVolume(value); // Ajusta o estado do volume
   };
 
+  const handleLeftPan = () => {
+    if (pannerNode) {
+      pannerNode.pan.value = -1; // Define o panner para o lado esquerdo
+    }
+  };
+  
+  const handleRightPan = () => {
+    if (pannerNode) {
+      pannerNode.pan.value = 1; // Define o panner para o lado direito
+    }
+  };
+  
+
   const tracks = [
     '/audios/amor-e-fe.mp3',
     '/audios/leaozinho.mp3',
-    '/audios/Pais-e-filhos.mp3'
+    '/audios/Pais-e-filhos.mp3',
+    '/audios/Liberdade.mp3',
+    '/audios/Wake_Me_Up.mp3',
+    '/audios/WeWillRockYou.mp3',
+    '/audios/LikeRollingStone.mp3',
+    '/audios/FlyMeToTheMoon.mp3',
+    '/audios/WHATWONDERFULWORLD.mp3',
+    '/audios/SosLoucosSabem.mp3',
+    '/audios/212.mp3',
+    '/audios/leilao.mp3',
+    '/audios/APrimavera.mp3',
+    '/audios/5sinfonia.mp3',
+    '/audios/IsThisLove.mp3',
+    '/audios/Billionaire.mp3',
+    '/audios/AguasdeMarço.mp3',
+    '/audios/oiBalde.mp3',
+    '/audios/MalFeito.mp3'
   ];
 
   const nextTrack = () => {
@@ -114,6 +164,10 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
     }
   };
 
+  function setBalanceHandler(value: number): void {
+    throw new Error('Function not implemented.');
+  }
+
   return (
     <HomeContext.Provider
       value={{
@@ -125,7 +179,8 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
         nextTrack,
         prevTrack,
         seek,
-        setVolume: setVolumeHandler // Adicionando a função de ajuste de volume ao contexto
+        setVolume: setVolumeHandler, // Função de ajuste de volume no contexto
+        setBalance: setBalanceHandler, // Função de ajuste de balanceamento estéreo no contexto
       }}
     >
       {children}
