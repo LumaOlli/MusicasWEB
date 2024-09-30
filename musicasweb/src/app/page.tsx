@@ -2,109 +2,131 @@
 
 import { useContext, useEffect, useState } from 'react';
 import { FaPlay, FaPause, FaStepForward, FaStepBackward, FaVolumeMute, FaVolumeDown, FaVolumeUp } from 'react-icons/fa'; 
-import { HomeContext } from './context/HomeContext'; 
+import { HomeContext } from './context/HomeContext';
 import { musics } from './dados/music';
 
+// Define uma interface para os dados da música
+interface MusicData {
+  id: number; 
+  author: string;
+  title: string;
+  category: string;
+  description: string;
+  image: string;
+  url: string;
+}
+
+// Componente principal da aplicação
 export default function Home() {
-  // Extrai funções e variáveis do contexto HomeContext
+  // Desestrutura dados do contexto
   const { playing, configPlayPause, playMusic, nextTrack, prevTrack, progress, seek, currentMusic, setVolume } = useContext(HomeContext);
   
-  // Estados locais
-  const [currentMusicData, setCurrentMusicData] = useState<{ title: string; image: string; author: string; description: string } | null>(null); // Guarda dados da música atual.
-  const [audioDuration, setAudioDuration] = useState<number | null>(null); // Guarda a duração da música atual.
-  const [volume, setLocalVolume] = useState(1); // Guarda o valor do volume.
-  const [balance, setBalance] = useState(0); // Guarda o valor de balanceamento estéreo.
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Guarda a categoria selecionada.
+  // Declara variáveis de estado
+  const [currentMusicData, setCurrentMusicData] = useState<MusicData | null>(null); // Dados da música atual
+  const [audioDuration, setAudioDuration] = useState<number | null>(null); // Duração do áudio
+  const [volume, setLocalVolume] = useState(1); // Volume atual
+  const [balance, setBalance] = useState(0); // Balanceamento (-1 para esquerda, 0 para centro, 1 para direita)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Categoria selecionada
+  const [audio, setAudio] = useState<HTMLAudioElement | null>(null); // Elemento de áudio
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null); // Contexto de áudio
+  const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null); // Nó de pan estéreo
+  const [isLeftSelected, setIsLeftSelected] = useState(false); // Estado para verificar se o lado esquerdo está selecionado
+  const [isRightSelected, setIsRightSelected] = useState(false); // Estado para verificar se o lado direito está selecionado
 
-  // Estados relacionados ao áudio
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null); // Armazena o elemento de áudio.
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null); // Contexto de áudio para manipulação avançada.
-  const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null); // Nó que controla o balanceamento estéreo.
-
-  // Efeito para inicializar e limpar o áudio quando a música atual muda.
+  // Efeito para configurar a música atual e o contexto de áudio
   useEffect(() => {
     if (currentMusic) {
-      // Busca os dados da música atual nos dados de músicas.
+      // Encontra os dados da música atual
       const musicData = musics.find(music => music.url === currentMusic);
-      setCurrentMusicData(musicData || null);
+      setCurrentMusicData(musicData || null); // Atualiza os dados da música atual
 
-      // Cria um novo elemento de áudio e configura o contexto de áudio e o nó estéreo.
+      // Cria um novo elemento de áudio
       const newAudio = new Audio(currentMusic);
-      const newAudioContext = new AudioContext();
-      const newPannerNode = newAudioContext.createStereoPanner();
+      const newAudioContext = new AudioContext(); // Cria um novo contexto de áudio
+      const newPannerNode = newAudioContext.createStereoPanner(); // Cria um nó de pan estéreo
 
-      const source = newAudioContext.createMediaElementSource(newAudio); // Conecta o elemento de áudio ao contexto de áudio.
-      source.connect(newPannerNode).connect(newAudioContext.destination); // Conecta o nó estéreo ao destino (alto-falantes).
+      // Conecta o nó de pan ao destino do contexto de áudio
+      const source = newAudioContext.createMediaElementSource(newAudio);
+      source.connect(newPannerNode).connect(newAudioContext.destination);
 
-      setAudio(newAudio); // Armazena o novo elemento de áudio no estado.
-      setAudioContext(newAudioContext); // Armazena o contexto de áudio no estado.
-      setPannerNode(newPannerNode); // Armazena o nó estéreo no estado.
-
-      // Atualiza a duração do áudio quando seus metadados forem carregados.
+      // Atualiza a duração do áudio quando os metadados são carregados
       newAudio.onloadedmetadata = () => {
         setAudioDuration(newAudio.duration);
       };
 
-      // Limpa o áudio e o contexto quando o componente for desmontado ou a música mudar.
+      // Armazena os novos elementos de áudio e contexto
+      setAudio(newAudio);
+      setAudioContext(newAudioContext);
+      setPannerNode(newPannerNode);
+
+      // Limpeza ao desmontar o componente
       return () => {
-        newAudio.pause();
-        newAudioContext.close();
+        newAudio.pause(); // Pausa o áudio
+        newAudioContext.close(); // Fecha o contexto de áudio
       };
     }
-  }, [currentMusic]); // O efeito é executado sempre que a música atual mudar.
+  }, [currentMusic]);
 
-  // Efeito para ajustar o balanceamento estéreo sempre que o valor de balance mudar.
+  // Efeito para ajustar o balanceamento
   useEffect(() => {
     if (pannerNode) {
-      pannerNode.pan.value = balance; // Atualiza o valor do pan estéreo.
+      pannerNode.pan.value = balance; // Ajusta o valor do pan estéreo.
     }
-  }, [balance, pannerNode]); // O efeito é executado sempre que balance ou pannerNode mudar.
+  }, [balance, pannerNode]);
 
-  // Função para lidar com a mudança de volume.
+  // Função para lidar com a mudança de volume
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseFloat(e.target.value); // Converte o valor do volume para número.
-    setLocalVolume(newVolume); // Atualiza o volume local.
-    setVolume(newVolume); // Atualiza o volume global (via contexto).
+    const newVolume = parseFloat(e.target.value); // Obtém o novo volume do slider
+    setLocalVolume(newVolume); // Atualiza o volume local
+    setVolume(newVolume); // Atualiza o volume no contexto
     if (audio) {
-      audio.volume = newVolume; // Ajusta o volume do elemento de áudio.
+      audio.volume = newVolume; // Ajusta o volume do elemento de áudio
     }
   };
 
-  // Função para ajustar o balanceamento estéreo (esquerda ou direita).
-  const adjustBalance = (direction: 'left' | 'right') => {
-    setBalance(prev => {
-      // Ajusta o balanceamento com base na direção (entre -1 e 1).
-      const newBalance = direction === 'left' ? Math.max(-1, prev - 0.1) : Math.min(1, prev + 0.1);
-      return newBalance;
-    });
+  // Função para ajustar o balanceamento para a esquerda
+  const adjustBalanceLeft = () => {
+    if (isLeftSelected) {
+      setBalance(0); // Desabilita o balanceamento
+      setIsLeftSelected(false);
+    } else {
+      setBalance(-1); // Ajusta o balanceamento para a esquerda
+      setIsLeftSelected(true); // Marca o lado esquerdo como selecionado
+      setIsRightSelected(false); // Desmarca o lado direito
+    }
   };
 
-  // Função para renderizar o ícone de volume correto (mudo, baixo ou alto).
+  // Função para ajustar o balanceamento para a direita
+  const adjustBalanceRight = () => {
+    if (isRightSelected) {
+      setBalance(0); // Desabilita o balanceamento
+      setIsRightSelected(false);
+    } else {
+      setBalance(1); // Ajusta o balanceamento para a direita
+      setIsRightSelected(true); // Marca o lado direito como selecionado
+      setIsLeftSelected(false); // Desmarca o lado esquerdo
+    }
+  };
+
+  // Função para renderizar o ícone de volume com base no nível de volume
   const renderVolumeIcon = () => {
     if (volume === 0) return <FaVolumeMute className="text-[30px]" />;
     if (volume > 0 && volume <= 0.5) return <FaVolumeDown className="text-[30px]" />;
     return <FaVolumeUp className="text-[30px]" />;
   };
 
-  // Funções para ajustar o pan estéreo para a esquerda ou direita.
-  const handleLeftPan = () => {
-    adjustBalance('left');
-  };
-
-  const handleRightPan = () => {
-    adjustBalance('right');
-  };
-
-  // Gera uma lista única de categorias a partir das músicas.
+  // Obtém as categorias únicas das músicas
   const categories = Array.from(new Set(musics.map(music => music.category)));
 
+  // Renderiza o componente principal
   return (
     <main className="flex min-h-screen flex-row p-24">
+      {/* Cabeçalho da aplicação */}
       <header className="absolute top-0 left-0 w-full p-6 bg-purple-600 text-white text-center text-4xl font-bold">
         Euphonic
       </header>
 
-      {/* Barra lateral de categorias */}
+      {/* Lateral esquerda: Categorias */}
       <aside className="w-1/6 p-4 border-r border-gray-200 flex flex-col items-center mt-16">
         <hr className="border-gray-300 w-full mb-4" />
         <h2 className="text-lg font-bold mb-4 text-center">Categorias</h2>
@@ -114,7 +136,7 @@ export default function Home() {
             <li
               key={`category-${index}`} 
               className={`mb-4 pb-2 cursor-pointer text-center ${selectedCategory === category ? 'font-bold text-blue-500' : ''}`}
-              onClick={() => setSelectedCategory(category)} // Atualiza a categoria selecionada.
+              onClick={() => setSelectedCategory(category)} // Define a categoria selecionada ao clicar
             >
               {category}
               <div className="h-px bg-gray-300 w-full my-2"></div> 
@@ -123,7 +145,7 @@ export default function Home() {
         </ul>
       </aside>
 
-      {/* Barra lateral de músicas */}
+      {/* Lateral direita: Músicas */}
       <aside className="w-1/4 p-4 border-l border-gray-200 flex flex-col items-center mt-16">
         <hr className="border-gray-300 w-full mb-4" />
         <h2 className="text-lg font-bold mb-4 text-center">Músicas</h2>
@@ -133,17 +155,17 @@ export default function Home() {
             <p className="text-center">Selecione uma categoria para ver as músicas</p>
           ) : (
             musics
-              .filter(music => music.category === selectedCategory) // Filtra músicas pela categoria selecionada.
+              .filter(music => music.category === selectedCategory) // Filtra as músicas pela categoria selecionada
               .map((music, index) => (
                 <li
                   key={`music-${music.id}`}
                   className="mb-6 pb-4 cursor-pointer flex flex-col items-center"
-                  onClick={() => playMusic(music.url)} // Inicia a reprodução da música selecionada.
+                  onClick={() => playMusic(music.url)} // Reproduz a música ao clicar
                 >
                   <h3 className="text-xl font-semibold mb-1">{music.title}</h3>
                   <p className="text-sm text-gray-500 mb-1">Artista: {music.author}</p>
                   {index < musics.filter(m => m.category === selectedCategory).length - 1 && (
-                    <hr className="border-gray-300 w-full mb-4" /> 
+                    <hr className="border-gray-300 w-full mb-4" /> // Adiciona linha entre músicas
                   )}
                 </li>
               ))
@@ -151,63 +173,73 @@ export default function Home() {
         </ul>
       </aside>
 
-      {/* Controle de reprodução e ajustes de áudio */}
+      {/* Área central: Controle de áudio */}
       <div className="flex-1 flex flex-col items-center justify-center mt-16">
         <div className="flex flex-col items-center mb-6">
           <div className="flex flex-col items-center">
             <h1 className="text-2xl font-bold mb-2 text-center">
-              {currentMusicData ? currentMusicData.title : 'Clique em cima de uma música para que comece a tocar'} {/* Exibe o título da música atual. */}
+              {currentMusicData ? currentMusicData.title : 'Clique em cima de uma música para que comece a tocar'}
             </h1>
             {currentMusicData && (
-              <img src={currentMusicData.image} alt={currentMusicData.title} className="w-80 h-80 object-cover mb-2" /> /* Exibe a imagem da música atual. */
+              <img src={currentMusicData.image} alt={currentMusicData.title} className="w-80 h-80 object-cover mb-2" /> // Exibe a imagem da música atual
             )}
           </div>
 
           {/* Controle de volume */}
           <div className="w-full flex justify-center items-center mt-4">
             <button className="mr-4">
-              {renderVolumeIcon()} {/* Exibe o ícone correspondente ao volume. */}
+              {renderVolumeIcon()}
             </button>
             <input
               type="range"
               min="0"
               max="1"
               step="0.01"
-              value={volume}
-              onChange={handleVolumeChange} // Atualiza o volume quando o usuário interage com o controle.
+              value={volume} // Slider de volume
+              onChange={handleVolumeChange} // Atualiza o volume ao mover o slider
               className="w-64"
             />
           </div>
 
-          {/* Barra de progresso */}
+          {/* Controle de progresso da música */}
           <div className="w-full mt-4 flex justify-center">
             <input
               type="range"
               min="0"
-              max={audioDuration || 0}
-              value={progress}
-              onChange={(e) => seek(parseFloat(e.target.value))} // Atualiza o progresso da música.
+              max={audioDuration || 0} // Slider de progresso da música
+              value={progress} // Valor atual do progresso
+              onChange={(e) => seek(parseFloat(e.target.value))} // Atualiza o progresso ao mover o slider
               className="w-full"
             />
           </div>
 
-          {/* Controles de navegação e pan estéreo */}
+          {/* Controles de reprodução */}
           <div className="flex items-center mt-4">
             <button onClick={prevTrack} className="mr-4">
-              <FaStepBackward size={30} /> {/* Botão de música anterior. */}
+              <FaStepBackward size={30} /> 
             </button>
             <button onClick={configPlayPause}>
-              {playing ? <FaPause size={30} /> : <FaPlay size={30} />} {/* Alterna entre play e pause. */}
+              {playing ? <FaPause size={30} /> : <FaPlay size={30} />}
             </button>
             <button onClick={nextTrack} className="ml-4">
-              <FaStepForward size={30} /> {/* Botão de próxima música. */}
+              <FaStepForward size={30} />
             </button>
           </div>
 
-          {/* Controles de pan estéreo */}
+          {/* Controles de balanceamento */}
           <div className="flex items-center mt-4">
-            <button onClick={handleLeftPan} className="mr-4">Esquerda</button>
-            <button onClick={handleRightPan} className="ml-4">Direita</button>
+            <button
+              onClick={adjustBalanceLeft} // Ajusta o balanceamento para a esquerda
+              className={`mr-2 px-4 py-2 rounded ${isLeftSelected ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} // Estilo do botão para esquerda
+            >
+              Esquerda
+            </button>
+            <button
+              onClick={adjustBalanceRight} // Ajusta o balanceamento para a direita
+              className={`ml-2 px-4 py-2 rounded ${isRightSelected ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} // Estilo do botão para direita
+            >
+              Direita
+            </button>
           </div>
         </div>
       </div>
