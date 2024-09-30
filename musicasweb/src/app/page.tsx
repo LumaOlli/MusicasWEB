@@ -19,7 +19,7 @@ interface MusicData {
 // Componente principal da aplicação
 export default function Home() {
   // Desestrutura dados do contexto
-  const { playing, configPlayPause, playMusic, nextTrack, prevTrack, progress, seek, currentMusic, setVolume } = useContext(HomeContext);
+  const { playing, configPlayPause, playMusic, nextTrack, prevTrack, progress, setVolume, currentMusic } = useContext(HomeContext);
   
   // Declara variáveis de estado
   const [currentMusicData, setCurrentMusicData] = useState<MusicData | null>(null); // Dados da música atual
@@ -30,8 +30,6 @@ export default function Home() {
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null); // Elemento de áudio
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null); // Contexto de áudio
   const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null); // Nó de pan estéreo
-  const [isLeftSelected, setIsLeftSelected] = useState(false); // Estado para verificar se o lado esquerdo está selecionado
-  const [isRightSelected, setIsRightSelected] = useState(false); // Estado para verificar se o lado direito está selecionado
 
   // Efeito para configurar a música atual e o contexto de áudio
   useEffect(() => {
@@ -52,6 +50,13 @@ export default function Home() {
       // Atualiza a duração do áudio quando os metadados são carregados
       newAudio.onloadedmetadata = () => {
         setAudioDuration(newAudio.duration);
+      };
+
+      // Atualiza a barra de progresso enquanto a música está tocando
+      newAudio.ontimeupdate = () => {
+        if (audioDuration) {
+          progress(newAudio.currentTime); // Atualiza o progresso atual
+        }
       };
 
       // Armazena os novos elementos de áudio e contexto
@@ -84,27 +89,11 @@ export default function Home() {
     }
   };
 
-  // Função para ajustar o balanceamento para a esquerda
-  const adjustBalanceLeft = () => {
-    if (isLeftSelected) {
-      setBalance(0); // Desabilita o balanceamento
-      setIsLeftSelected(false);
-    } else {
-      setBalance(-1); // Ajusta o balanceamento para a esquerda
-      setIsLeftSelected(true); // Marca o lado esquerdo como selecionado
-      setIsRightSelected(false); // Desmarca o lado direito
-    }
-  };
-
-  // Função para ajustar o balanceamento para a direita
-  const adjustBalanceRight = () => {
-    if (isRightSelected) {
-      setBalance(0); // Desabilita o balanceamento
-      setIsRightSelected(false);
-    } else {
-      setBalance(1); // Ajusta o balanceamento para a direita
-      setIsRightSelected(true); // Marca o lado direito como selecionado
-      setIsLeftSelected(false); // Desmarca o lado esquerdo
+  // Função para lidar com a mudança da barra de progresso
+  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(e.target.value); // Obtém o novo tempo da barra de progresso
+    if (audio) {
+      audio.currentTime = newTime; // Atualiza o tempo atual do áudio
     }
   };
 
@@ -174,73 +163,77 @@ export default function Home() {
       </aside>
 
       {/* Área central: Controle de áudio */}
-      <div className="flex-1 flex flex-col items-center justify-center mt-16">
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex flex-col items-center">
-            <h1 className="text-2xl font-bold mb-2 text-center">
-              {currentMusicData ? currentMusicData.title : 'Clique em cima de uma música para que comece a tocar'}
-            </h1>
-            {currentMusicData && (
-              <img src={currentMusicData.image} alt={currentMusicData.title} className="w-80 h-80 object-cover mb-2" /> // Exibe a imagem da música atual
-            )}
+      <div className="flex-1 flex flex-col items-center justify-center mt-16 relative">
+        {/* Barra de balanceamento */}
+        <div className="absolute top-4 left-4 w-32">
+          <label className="text-center mb-1">Áudio Estéreo</label>
+          <div className="flex justify-between text-xs">
+            <span>E</span> {/* Label para esquerda */}
+            <span>D</span> {/* Label para direita */}
           </div>
-
-          {/* Controle de volume */}
-          <div className="w-full flex justify-center items-center mt-4">
-            <button className="mr-4">
-              {renderVolumeIcon()}
-            </button>
+          <div className="relative">
             <input
               type="range"
-              min="0"
+              min="-1"
               max="1"
               step="0.01"
-              value={volume} // Slider de volume
-              onChange={handleVolumeChange} // Atualiza o volume ao mover o slider
-              className="w-64"
-            />
-          </div>
-
-          {/* Controle de progresso da música */}
-          <div className="w-full mt-4 flex justify-center">
-            <input
-              type="range"
-              min="0"
-              max={audioDuration || 0} // Slider de progresso da música
-              value={progress} // Valor atual do progresso
-              onChange={(e) => seek(parseFloat(e.target.value))} // Atualiza o progresso ao mover o slider
+              value={balance}
+              onChange={(e) => setBalance(parseFloat(e.target.value))} // Atualiza o balanceamento ao mover o slider
               className="w-full"
             />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 h-1 w-1 rounded-full" /> {/* Indicador de centro */}
           </div>
+        </div>
 
-          {/* Controles de reprodução */}
-          <div className="flex items-center mt-4">
-            <button onClick={prevTrack} className="mr-4">
-              <FaStepBackward size={30} /> 
-            </button>
-            <button onClick={configPlayPause}>
-              {playing ? <FaPause size={30} /> : <FaPlay size={30} />}
-            </button>
-            <button onClick={nextTrack} className="ml-4">
-              <FaStepForward size={30} />
-            </button>
+        {/* Barra de volume */}
+        <div className="absolute top-4 right-4 w-48">
+          <div className="flex items-center justify-between mb-2">
+            {renderVolumeIcon()}
           </div>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={volume}
+            onChange={handleVolumeChange} // Atualiza o volume ao mover o slider
+            className="w-full"
+          />
+        </div>
 
-          {/* Controles de balanceamento */}
-          <div className="flex items-center mt-4">
-            <button
-              onClick={adjustBalanceLeft} // Ajusta o balanceamento para a esquerda
-              className={`mr-2 px-4 py-2 rounded ${isLeftSelected ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} // Estilo do botão para esquerda
-            >
-              Esquerda
-            </button>
-            <button
-              onClick={adjustBalanceRight} // Ajusta o balanceamento para a direita
-              className={`ml-2 px-4 py-2 rounded ${isRightSelected ? 'bg-blue-500 text-white' : 'bg-gray-200'}`} // Estilo do botão para direita
-            >
-              Direita
-            </button>
-          </div>
+        {/* Exibição da imagem da música */}
+        {currentMusicData && (
+          <img src={currentMusicData.image} alt={currentMusicData.title} className="w-48 h-48 mb-4 rounded-md" />
+        )}
+        <h1 className="text-2xl font-semibold text-center mb-1">
+          {currentMusicData ? currentMusicData.title : 'Selecione uma música'}
+        </h1>
+        <h2 className="text-lg text-gray-600 mb-2 text-center">
+          {currentMusicData ? currentMusicData.author : ''}
+        </h2>
+
+        {/* Barra de progresso */}
+        <input
+          type="range"
+          min="0"
+          max={audioDuration || 0}
+          step="0.01"
+          value={progress} // Valor da barra de progresso
+          onChange={handleProgressChange} // Atualiza o tempo ao mover o slider
+          className="w-full mt-4"
+        />
+
+        {/* Controles de reprodução */}
+        <div className="flex items-center mt-4">
+          <button onClick={prevTrack} className="mr-4">
+            <FaStepBackward size={30} />
+          </button>
+          <button onClick={configPlayPause}>
+            {playing ? <FaPause size={30} /> : <FaPlay size={30} />}
+          </button>
+          <button onClick={nextTrack} className="ml-4">
+            <FaStepForward size={30} />
+          </button>
         </div>
       </div>
     </main>
