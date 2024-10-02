@@ -25,7 +25,7 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
   const [playing, setPlaying] = useState(false);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [currentMusic, setCurrentMusic] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0); // Progresso em segundos
+  const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1); // Volume (1 = 100%)
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null);
@@ -113,18 +113,12 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
     setVolume(value); // Ajusta o estado do volume
   };
 
-  const handleLeftPan = () => {
+  const setBalanceHandler = (value: number) => {
     if (pannerNode) {
-      pannerNode.pan.value = -1; // Define o panner para o lado esquerdo
+      pannerNode.pan.value = value; // Define o valor do panner
     }
+    setBalance(value); // Ajusta o estado do balanceamento
   };
-  
-  const handleRightPan = () => {
-    if (pannerNode) {
-      pannerNode.pan.value = 1; // Define o panner para o lado direito
-    }
-  };
-  
 
   const tracks = [
     '/audios/amor-e-fe.mp3',
@@ -163,10 +157,6 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
       setCurrentMusic(tracks[prevIndex]);
     }
   };
-
-  function setBalanceHandler(value: number): void {
-    throw new Error('Function not implemented.');
-  }
 
   return (
     <HomeContext.Provider
