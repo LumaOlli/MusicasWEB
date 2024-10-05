@@ -49,6 +49,7 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
       newAudio.play();
       setPlaying(true);
 
+      // Atualiza o progresso em tempo real
       newAudio.ontimeupdate = () => {
         setProgress(newAudio.currentTime);
       };
@@ -101,8 +102,8 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
 
   const seek = (time: number) => {
     if (audio) {
-      audio.currentTime = time;
-      setProgress(time);
+      audio.currentTime = time; // Define o tempo da música
+      setProgress(time); // Atualiza o progresso
     }
   };
 

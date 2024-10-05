@@ -18,11 +18,12 @@ interface MusicData {
 
 // Componente principal da aplicação
 export default function Home() {
-  const { playing, configPlayPause, playMusic, nextTrack, prevTrack, progress, setVolume, currentMusic } = useContext(HomeContext);
+  const { playing, configPlayPause, playMusic, nextTrack, prevTrack, setVolume, currentMusic } = useContext(HomeContext);
 
   // Estados do componente
   const [currentMusicData, setCurrentMusicData] = useState<MusicData | null>(null);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const [progressLocal, setProgressLocal] = useState<number>(0);
   const [volume, setLocalVolume] = useState(1);
   const [balance, setBalance] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -46,11 +47,10 @@ export default function Home() {
       newAudio.onloadedmetadata = () => {
         setAudioDuration(newAudio.duration);
       };
-        newAudio.ontimeupdate = () => {
-          if (audioDuration) {
-            progress(newAudio.currentTime);  // Use currentTime directly
-          }
-        };
+
+      newAudio.ontimeupdate = () => {
+        setProgressLocal(newAudio.currentTime); // Atualiza o progresso local em tempo real
+      };
 
       setAudio(newAudio);
       setAudioContext(newAudioContext);
@@ -84,7 +84,8 @@ export default function Home() {
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(e.target.value);
     if (audio) {
-      audio.currentTime = newTime;
+      audio.currentTime = newTime; // Atualiza o tempo da música
+      setProgressLocal(newTime); // Atualiza o progresso local para refletir a mudança
     }
   };
 
@@ -198,10 +199,10 @@ export default function Home() {
         <input
           type="range"
           min="0"
-          max={audioDuration || 0}
+          max={audioDuration || 0} // Usa a duração do áudio se disponível
           step="0.01"
-          value={progress}
-          onChange={handleProgressChange}
+          value={progressLocal}  // Usa o progresso local
+          onChange={handleProgressChange} // Atualiza o tempo da música
           className="w-full mt-4"
         />
 
