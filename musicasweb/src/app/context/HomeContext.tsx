@@ -31,6 +31,28 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
   const [pannerNode, setPannerNode] = useState<StereoPannerNode | null>(null);
   const [balance, setBalance] = useState(0); // Balanceamento estéreo (-1 = esquerda, 1 = direita)
 
+  const tracks = [
+    '/audios/amor-e-fe.mp3',
+    '/audios/leaozinho.mp3',
+    '/audios/Pais-e-filhos.mp3',
+    '/audios/Liberdade.mp3',
+    '/audios/Wake_Me_Up.mp3',
+    '/audios/WeWillRockYou.mp3',
+    '/audios/LikeRollingStone.mp3',
+    '/audios/FlyMeToTheMoon.mp3',
+    '/audios/WHATWONDERFULWORLD.mp3',
+    '/audios/SosLoucosSabem.mp3',
+    '/audios/212.mp3',
+    '/audios/leilao.mp3',
+    '/audios/APrimavera.mp3',
+    '/audios/5sinfonia.mp3',
+    '/audios/IsThisLove.mp3',
+    '/audios/Billionaire.mp3',
+    '/audios/AguasdeMarço.mp3',
+    '/audios/oiBalde.mp3',
+    '/audios/MalFeito.mp3'
+  ];
+
   useEffect(() => {
     if (currentMusic) {
       const newAudio = new Audio(currentMusic);
@@ -57,6 +79,7 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
       newAudio.onended = () => {
         setPlaying(false);
         setProgress(0);
+        nextTrack(); // Toca a próxima música ao final da atual
       };
 
       return () => {
@@ -121,41 +144,19 @@ const HomeContextProvider = ({ children }: ProviderProps) => {
     setBalance(value); // Ajusta o estado do balanceamento
   };
 
-  const tracks = [
-    '/audios/amor-e-fe.mp3',
-    '/audios/leaozinho.mp3',
-    '/audios/Pais-e-filhos.mp3',
-    '/audios/Liberdade.mp3',
-    '/audios/Wake_Me_Up.mp3',
-    '/audios/WeWillRockYou.mp3',
-    '/audios/LikeRollingStone.mp3',
-    '/audios/FlyMeToTheMoon.mp3',
-    '/audios/WHATWONDERFULWORLD.mp3',
-    '/audios/SosLoucosSabem.mp3',
-    '/audios/212.mp3',
-    '/audios/leilao.mp3',
-    '/audios/APrimavera.mp3',
-    '/audios/5sinfonia.mp3',
-    '/audios/IsThisLove.mp3',
-    '/audios/Billionaire.mp3',
-    '/audios/AguasdeMarço.mp3',
-    '/audios/oiBalde.mp3',
-    '/audios/MalFeito.mp3'
-  ];
-
   const nextTrack = () => {
     if (currentMusic) {
       const currentIndex = tracks.indexOf(currentMusic);
-      const nextIndex = (currentIndex + 1) % tracks.length;
-      setCurrentMusic(tracks[nextIndex]);
+      const nextIndex = (currentIndex + 1) % tracks.length; // Volta para o início se estiver na última música
+      playMusic(tracks[nextIndex]); // Toca a próxima música
     }
   };
 
   const prevTrack = () => {
     if (currentMusic) {
       const currentIndex = tracks.indexOf(currentMusic);
-      const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-      setCurrentMusic(tracks[prevIndex]);
+      const prevIndex = (currentIndex - 1 + tracks.length) % tracks.length; // Volta para a última se estiver na primeira
+      playMusic(tracks[prevIndex]); // Toca a música anterior
     }
   };
 
